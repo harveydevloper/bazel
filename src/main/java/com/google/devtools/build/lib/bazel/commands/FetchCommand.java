@@ -99,11 +99,25 @@ public final class FetchCommand implements BlazeCommand {
     FetchOptions fetchOptions = options.getOptions(FetchOptions.class);
     LoadingPhaseThreadsOption threadsOption = options.getOptions(LoadingPhaseThreadsOption.class);
 
+    env.getEventBus()
+        .post(
+            new NoBuildEvent(
+                env.getCommandName(),
+                env.getCommandStartTime(),
+                /* separateFinishedEvent= */ true,
+                /* showProgress= */ true,
+                /* id= */ null));
+    BlazeCommandResult result;
     if (fetchOptions.all) {
-      return fetchAll(env, options, threadsOption);
+      result = fetchAll(env, options, threadsOption);
+    } else {
+      result = fetchTarget(env, options, threadsOption);
     }
-
-    return fetchTarget(env, options, threadsOption);
+    env.getEventBus()
+        .post(
+            new NoBuildRequestFinishedEvent(
+                result.getExitCode(), env.getRuntime().getClock().currentTimeMillis()));
+    return result;
   }
 
   private BlazeCommandResult fetchAll(CommandEnvironment env, OptionsParsingResult options,
